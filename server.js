@@ -12,25 +12,22 @@ const { Pool } = require("pg");
 
 const app = express();
 
-// =====================
-// PostgreSQL Setup
-// =====================
 const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10) || 5432,
-  database: process.env.DB_NAME,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionString: process.env.DATABASE_URL, // your single URL
+  ssl: {
+    rejectUnauthorized: false, // required for Supabase
+  },
 });
 
 pool.connect()
-  .then(() => console.log("✅ Connected to PostgreSQL"))
-  .catch(err => console.error("❌ PostgreSQL connection error:", err.message));
+  .then(client => {
+    console.log("✅ PostgreSQL connected");
+    client.release();
+  })
+  .catch(err => {
+    console.error("❌ PostgreSQL connection error:", err.message);
+  });
 
-// =====================
 // Uploads directory
 // =====================
 const uploadsDir = path.join(__dirname, "uploads", "students");
