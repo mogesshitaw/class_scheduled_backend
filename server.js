@@ -1,116 +1,111 @@
-require("dotenv").config();
+// server.js
+"use strict";
 
 const express = require("express");
 const session = require("express-session");
-const pgSession = require("connect-pg-simple")(session);
-const { Pool } = require("pg");
 const cors = require("cors");
 const path = require("path");
-const pool = require("./src/db"); // your Pool using DATABASE_URL
-
+const bodyParser = require("body-parser");
+const fs = require("fs");
+require("dotenv").config();
+const { Pool } = require("pg");
 
 const app = express();
 
-/* =====================================================
-   1️⃣ DATABASE CONNECTION (Render PostgreSQL)
-===================================================== */
+// =====================
+// PostgreSQL Setup
+// =====================
+const pool = new Pool({
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT, 10) || 5432,
+  database: process.env.DB_NAME,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
-if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL is not defined in environment variables");
-  process.exit(1);
+pool.connect()
+  .then(() => console.log("✅ Connected to PostgreSQL"))
+  .catch(err => console.error("❌ PostgreSQL connection error:", err.message));
+
+// =====================
+// Uploads directory
+// =====================
+const uploadsDir = path.join(__dirname, "uploads", "students");
+if (!fs.existsSync(uploadsDir)) {
+  console.log("Directory exists? false\nCreating uploads directory...");
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log("Directory created successfully");
+} else {
+  console.log("Directory exists? true");
 }
 
-
-
-// Test database connection
-pool.connect()
-  .then(client => {
-    console.log("✅ Connected to PostgreSQL");
-    client.release();
-  })
-  .catch(err => {
-    console.error("❌ Database connection failed:", err);
-    process.exit(1);
-  });
-
-
-/* =====================================================
-   3️⃣ CORS CONFIGURATION
-===================================================== */
-
+// =====================
+// CORS setup
+// =====================
 const allowedOrigins = [
-  "http://localhost:3000",
-  "https://classschedule-mtu.vercel.app", // your real frontend
+  "http://localhost:3000", // local frontend
+  "https://classschedule-mtu.vercel.app", // production frontend
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(new Error("CORS error: origin missing"));
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error(`CORS error: ${origin} not allowed`));
-    }
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow server-to-server or Postman requests
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn(`Blocked CORS request from ${origin}`);
+    return callback(null, false); // block everything else
   },
-  credentials: true,
+  credentials: true, // allow cookies
 }));
 
-/* =====================================================
-   4️⃣ BODY PARSER
-===================================================== */
-
+// =====================
+// Middlewares
+// =====================
+app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* =====================================================
-   5️⃣ SESSION STORE (PostgreSQL)
-===================================================== */
-app.set("trust proxy", 1); // important for Render / behind proxy
+// Serve uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// =====================
+// Session setup
+// =====================
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || "mysecretkey",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === "production", // HTTPS only
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // cross-site cookies
+    secure: process.env.NODE_ENV === "production", // HTTPS only in production
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   },
 }));
-/* =====================================================
-   6️⃣ STATIC FILES (WARNING: TEMPORARY ON RENDER)
-===================================================== */
 
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
-
-/* =====================================================
-   7️⃣ REQUEST LOGGER
-===================================================== */
-
+// =====================
+// Logging
+// =====================
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.originalUrl}`);
+  console.log(`${req.method} ${req.url}`);
   next();
 });
 
-/* =====================================================
-   8️⃣ HEALTH CHECK
-===================================================== */
-
-app.get("/api/health", (req, res) => {
+// =====================
+// Health Check
+// =====================
+app.get("/api/health", (_req, res) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
+    services: ["auth", "users", "departments", "courses", "schedules"]
   });
 });
 
-/* =====================================================
-   9️⃣ ROUTES
-===================================================== */
-
+// =====================
+// Routes (example)
+// =====================
 app.use("/api/auth", require("./src/routes/authRoutes"));
 app.use("/api/users", require("./src/routes/userRoutes"));
 app.use("/api/departments", require("./src/routes/depRoutes"));
@@ -146,44 +141,50 @@ app.get("/", (req, res) => {
   });
 });
 
-/* =====================================================
-   1️⃣1️⃣ 404 HANDLER
-===================================================== */
+// =====================
+// Root route
+// =====================
+app.get("/", (_req, res) => {
+  res.json({
+    message: "Woldia University API",
+    version: "1.0.0",
+    docs: "Available at /api/* endpoints",
+    health: "/api/health"
+  });
+});
 
+// =====================
+// 404 handler
+// =====================
 app.use((req, res) => {
+  console.log(`404: ${req.method} ${req.url}`);
   res.status(404).json({
     success: false,
     error: "Route not found",
-    path: req.originalUrl,
+    path: req.url,
+    method: req.method
   });
 });
 
-/* =====================================================
-   1️⃣2️⃣ ERROR HANDLER
-===================================================== */
-
+// =====================
+// Error handler
+// =====================
 app.use((err, req, res, next) => {
-  console.error("❌ Server Error:", err);
-
-  if (res.headersSent) {
-    return next(err);
-  }
-
+  console.error("Server error:", err);
   res.status(500).json({
     success: false,
-    message:
-      process.env.NODE_ENV === "development"
-        ? err.message
-        : "Internal server error",
+    error: "Internal server error",
+    message: process.env.NODE_ENV === "development" ? err.message : undefined
   });
 });
 
-/* =====================================================
-   🚀 START SERVER
-===================================================== */
-
-const PORT = process.env.PORT || 5000;
-
+// =====================
+// Start server
+// =====================
+const PORT = parseInt(process.env.PORT, 10) || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Frontend: http://localhost:3000`);
+  console.log(`🔗 API: http://localhost:${PORT}/api`);
+  console.log(`❤️  Health: http://localhost:${PORT}/api/health`);
 });
