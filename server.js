@@ -1,161 +1,110 @@
-// server.js
-"use strict";
-
 const express = require("express");
 const session = require("express-session");
 const cors = require("cors");
-const path = require("path");
+const path = require('path');
 const bodyParser = require("body-parser");
-const fs = require("fs");
 require("dotenv").config();
-const { Pool } = require("pg");
-
 const app = express();
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // your single URL
-  ssl: {
-    rejectUnauthorized: false, // required for Supabase
-  },
-});
-
-pool.connect()
-  .then(client => {
-    console.log("✅ PostgreSQL connected");
-    client.release();
-  })
-  .catch(err => {
-    console.error("❌ PostgreSQL connection error:", err.message);
-  });
-
-// Uploads directory
-// =====================
-const uploadsDir = path.join(__dirname, "uploads", "students");
-if (!fs.existsSync(uploadsDir)) {
-  console.log("Directory exists? false\nCreating uploads directory...");
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log("Directory created successfully");
-} else {
-  console.log("Directory exists? true");
-}
-
-// =====================
-// CORS setup
-// =====================
-const allowedOrigins = [
-  "http://localhost:3000", // local frontend
-  "https://classschedule-mtu.vercel.app", // production frontend
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow server-to-server or Postman requests
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    console.warn(`Blocked CORS request from ${origin}`);
-    return callback(null, false); // block everything else
-  },
-  credentials: true, // allow cookies
-}));
-
-// =====================
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads', 'students');
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middlewares
-// =====================
+app.use(cors({
+  origin: ["http://localhost:3000", "https://classschedule-mtu.vercel.app"], // Next.js frontend
+  credentials: true,
+}));
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Serve uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// =====================
 // Session setup
-// =====================
 app.use(session({
   secret: process.env.SESSION_SECRET || "mysecretkey",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === "production", // HTTPS only in production
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
-  },
+     maxAge: 10 * 60 * 1000 // 10 minutes inactivity
+    }, // set true only on HTTPS
 }));
-
-// =====================
-// Logging
-// =====================
+app.use(express.json()); // ✅ parse JSON
+app.use(express.urlencoded({ extended: true })); 
+// Logging middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
 
-// =====================
-// Health Check
-// =====================
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "healthy",
+// Health check route (add before other routes)
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "healthy", 
     timestamp: new Date().toISOString(),
     services: ["auth", "users", "departments", "courses", "schedules"]
   });
 });
 
-// =====================
-// Routes (example)
-// =====================
-app.use("/api/auth", require("./src/routes/authRoutes"));
-app.use("/api/users", require("./src/routes/userRoutes"));
-app.use("/api/departments", require("./src/routes/depRoutes"));
-app.use("/api/courses", require("./src/routes/courseRoutes"));
-app.use("/api/schedules", require("./src/routes/sheduleRoutes"));
-app.use("/api/feedback", require("./src/routes/feedbackRoutes"));
-app.use("/api/announcements", require("./src/routes/announceRoutes"));
-app.use("/api/blocks", require("./src/routes/blockRoute"));
-app.use("/api/floors", require("./src/routes/floorRoute"));
-app.use("/api/rooms", require("./src/routes/roomRoutes"));
-app.use("/api/batches", require("./src/routes/batchRoutes"));
-app.use("/api/semesters", require("./src/routes/routeSemester"));
-app.use("/api/faculties", require("./src/routes/facultyRoutes"));
-app.use("/api/students", require("./src/routes/studentRoutes"));
-app.use("/api/importstudents", require("./src/routes/studentImportRoutes"));
-app.use("/api/chat", require("./src/routes/chatRoutes"));
-app.use("/api/course-batches", require("./src/routes/courseBatchRoutes"));
-app.use("/api/time-slots", require("./src/routes/timeSlotRoutes"));
-app.use("/api/section-rooms", require("./src/routes/sectionRoomRoutes"));
-app.use("/api/course-sections", require("./src/routes/courseSection"));
-app.use("/api/security-settings", require("./src/routes/securitySettingRoutes"));
-app.use("/api/academic-years", require("./src/routes/academicYearRoutes"));
+// routes
+const authRoutes = require("./src/routes/authRoutes");
+const userRoutes = require("./src/routes/userRoutes");
+const depRoutes = require("./src/routes/depRoutes");
+const courseRoutes = require("./src/routes/courseRoutes");
+const scheduleRoutes = require("./src/routes/sheduleRoutes");
+const feedbackRoutes = require("./src/routes/feedbackRoutes");
+const announceRoute = require("./src/routes/announceRoutes");
+const blockRoutes = require("./src/routes/blockRoute");
+const floorRoutes = require("./src/routes/floorRoute");
+const roomRoutes = require("./src/routes/roomRoutes");
+const batchRoutes = require('./src/routes/batchRoutes');
+const semesterRoutes = require('./src/routes/routeSemester');
+const faculityRoutes = require('./src/routes/facultyRoutes');
+const studentRoutes = require('./src/routes/studentRoutes');
+const studentimportRoutes = require('./src/routes/studentImportRoutes');
+const chatRoute = require("./src/routes/chatRoutes");
+const courseBatches = require("./src/routes/courseBatchRoutes");
+const timeSlote = require('./src/routes/timeSlotRoutes');
+const section_rooms = require('./src/routes/sectionRoomRoutes');
+const courseSectionRoutes = require('./src/routes/courseSection');
+const security_setting = require('./src/routes/securitySettingRoutes');
+const academic_year=require('./src/routes/academicYearRoutes')
 
-/* =====================================================
-   🔟 ROOT ROUTE
-===================================================== */
-
-app.get("/", (req, res) => {
-  res.json({
-    message: "Woldia University API",
-    version: "1.0.0",
-    health: "/api/health",
-  });
-});
-
-// =====================
+app.use("/api/auth", authRoutes);  // /api/auth/login, /api/auth/forgot-password
+app.use("/api/users", userRoutes); // /api/users
+app.use("/api/departments", depRoutes); // /api/department
+app.use("/api/courses", courseRoutes);  // /api/courses
+app.use("/api/schedules", scheduleRoutes);  // /api/courses
+app.use("/api/feedback", feedbackRoutes);  // /api/feedback
+app.use("/api/announcements", announceRoute);  // /api/announcements
+app.use("/api/blocks", blockRoutes); // /api/blocks
+app.use("/api/floors", floorRoutes); // /api/floors
+app.use("/api/rooms", roomRoutes); // /api/rooms
+app.use('/api/batches', batchRoutes);
+app.use('/api/semesters', semesterRoutes);
+app.use("/api/faculties", faculityRoutes); //api/faculties
+app.use("/api/students", studentRoutes); //
+app.use("/api/importstudents", studentimportRoutes);
+app.use("/api/chat", chatRoute) // /api/chat
+app.use("/api/course-batches", courseBatches);
+app.use("/api/time-slots", timeSlote); // api/time-slots
+app.use("/api/section-rooms", section_rooms);
+app.use('/api/course-sections', courseSectionRoutes);
+app.use('/api/security-settings', security_setting);
+app.use('/api/academic-years', academic_year);
 // Root route
-// =====================
 app.get("/", (_req, res) => {
-  res.json({
-    message: "Woldia University API",
-    version: "1.0.0",
-    docs: "Available at /api/* endpoints",
-    health: "/api/health"
-  });
+    console.log("API running");
+    res.json({ 
+      message: "MizanTepi University API",
+      version: "1.0.0",
+      docs: "Available at /api/* endpoints",
+      health: "/api/health"
+    });
 });
 
-// =====================
-// 404 handler
-// =====================
+// 404 handler - ALWAYS return JSON, not text
 app.use((req, res) => {
   console.log(`404: ${req.method} ${req.url}`);
-  res.status(404).json({
+  res.status(404).json({ 
     success: false,
     error: "Route not found",
     path: req.url,
@@ -163,22 +112,17 @@ app.use((req, res) => {
   });
 });
 
-// =====================
-// Error handler
-// =====================
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({
+  console.error('Server error:', err);
+  res.status(500).json({ 
     success: false,
     error: "Internal server error",
-    message: process.env.NODE_ENV === "development" ? err.message : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// =====================
-// Start server
-// =====================
-const PORT = parseInt(process.env.PORT, 10) || 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Frontend: http://localhost:3000`);
