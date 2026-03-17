@@ -5,7 +5,7 @@ const pool = require("../db");
 const getAllSemesters = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, semester FROM semesters ORDER BY semester`
+      `SELECT * FROM semesters ORDER BY semester`
     );
 
     res.json({
