@@ -3,43 +3,23 @@ require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
 const pgSession = require("connect-pg-simple")(session);
-const { Pool } = require("pg");
 const cors = require("cors");
 const path = require("path");
 const pool = require("./src/db"); // your Pool using DATABASE_URL
 
 const app = express();
 
-/* =====================================================
-   1️⃣ DATABASE CONNECTION (Render PostgreSQL)
-===================================================== */
-if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL is not defined in environment variables");
-  process.exit(1);
-}
-
-// Test database connection
-pool.connect()
-  .then(client => {
-    console.log("✅ Connected to PostgreSQL");
-    client.release();
-  })
-  .catch(err => {
-    console.error("❌ Database connection failed:", err);
-    process.exit(1);
-  });
 
 /* =====================================================
    2️⃣ CORS CONFIGURATION
 ===================================================== */
-const allowedOrigins = [
-  // "http://localhost:3001",
-  "https://classschedule-mtu.vercel.app", // your real frontend
+const allowedOrigins = [ "https://classschedule-mtu.vercel.app", // your real frontend
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(new Error("CORS error: origin missing"));
+    // allow requests with no origin (like Postman or server-to-server)
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -49,7 +29,6 @@ app.use(cors({
   },
   credentials: true,
 }));
-
 /* =====================================================
    3️⃣ BODY PARSER
 ===================================================== */
@@ -131,7 +110,7 @@ app.use("/api/academic-years", require("./src/routes/academicYearRoutes"));
 ===================================================== */
 app.get("/", (req, res) => {
   res.json({
-    message: "Woldia University API",
+    message: "Mizan Tepi University API",
     version: "1.0.0",
     health: "/api/health",
   });
