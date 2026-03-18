@@ -3,10 +3,16 @@ const pool = require("../db");
 
  const getAllSecuritySetting = async (req, res) => {
   try {
-
-    const result = await pool.query(
-      `SELECT * FROM security_setting  WHERE id_number=(SELECT id_number FROM users WHERE role='admin')`,
-    );
+const result = await pool.query(`
+  SELECT * 
+  FROM security_setting
+  WHERE id_number = (
+    SELECT id_number 
+    FROM users 
+    WHERE role='admin'
+    LIMIT 1
+  )
+`);
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Security setting not found' });
     }
