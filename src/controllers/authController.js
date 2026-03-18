@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   secure:false,
   auth: {
-    user: process.env.EMAIL_USER || 'zewdeph12@gmail.com',
+    user: process.env.EMAIL_USER || 'mogesshitaw7702@gmail.com',
     pass: process.env.EMAIL_APP_PASSWORD,
   },
 });
@@ -72,7 +72,7 @@ const forgotPassword = async (req, res) => {
       // Send email if user exists
       try {
         const mailOptions = {
-          from: process.env.EMAIL_FROM || '"Woldia University <zewdeph12@gmail.com>"',
+          from: process.env.EMAIL_FROM || '"Mizan Tep University <mogesshitaw7702@gmail.com>"',
           to: user.email,
           subject: 'Password Reset Instructions - Woldia University',
           html: `
