@@ -2,24 +2,21 @@ require("dotenv").config();
 
 const express = require("express");
 const session = require("express-session");
+const pgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
 const cors = require("cors");
 const path = require("path");
 const pool = require("./src/db"); // your Pool using DATABASE_URL
-
 
 const app = express();
 
 /* =====================================================
    1️⃣ DATABASE CONNECTION (Render PostgreSQL)
 ===================================================== */
-
 if (!process.env.DATABASE_URL) {
   console.error("❌ DATABASE_URL is not defined in environment variables");
   process.exit(1);
 }
-
-
 
 // Test database connection
 pool.connect()
@@ -32,14 +29,12 @@ pool.connect()
     process.exit(1);
   });
 
-
 /* =====================================================
-   3️⃣ CORS CONFIGURATION
+   2️⃣ CORS CONFIGURATION
 ===================================================== */
-
 const allowedOrigins = [
   // "http://localhost:3001",
- "https://classschedule-mtu.vercel.app", // your real frontend
+  "https://classschedule-mtu.vercel.app", // your real frontend
 ];
 
 app.use(cors({
@@ -56,52 +51,48 @@ app.use(cors({
 }));
 
 /* =====================================================
-   4️⃣ BODY PARSER
+   3️⃣ BODY PARSER
 ===================================================== */
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* =====================================================
-   5️⃣ SESSION STORE (PostgreSQL)
+   4️⃣ SESSION STORE (PostgreSQL)
 ===================================================== */
-app.set("trust proxy", 1); // important for Render / behind proxy
+app.set("trust proxy", 1); // required if behind proxy (Render/Vercel)
 
-/* =====================================================
-   5️⃣ SESSION STORE (MEMORY ONLY FOR LOCAL)
-===================================================== */
 app.use(session({
+  store: new pgSession({
+    pool: pool, // use your PostgreSQL pool
+    tableName: 'session', // table name for sessions
+    createTableIfMissing: true, // auto-create table if missing
+  }),
   secret: process.env.SESSION_SECRET || "keyboard cat",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,               // HTTP ላይ ስለሚሰራ  false ነው
-    sameSite: "lax",             // frontend/backend different domains ስለማይኖረው
-    maxAge: 24 * 60 * 60 * 1000, // 1 ቀን
+    secure: process.env.NODE_ENV === "production", // true on HTTPS
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // for cross-domain
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
   },
 }));
-/* =====================================================
-   6️⃣ STATIC FILES (WARNING: TEMPORARY ON RENDER)
-===================================================== */
-
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
 
 /* =====================================================
-   7️⃣ REQUEST LOGGER
+   5️⃣ STATIC FILES
 ===================================================== */
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+/* =====================================================
+   6️⃣ REQUEST LOGGER
+===================================================== */
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.originalUrl}`);
   next();
 });
 
 /* =====================================================
-   8️⃣ HEALTH CHECK
+   7️⃣ HEALTH CHECK
 ===================================================== */
-
 app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
@@ -110,9 +101,8 @@ app.get("/api/health", (req, res) => {
 });
 
 /* =====================================================
-   9️⃣ ROUTES
+   8️⃣ ROUTES
 ===================================================== */
-
 app.use("/api/auth", require("./src/routes/authRoutes"));
 app.use("/api/users", require("./src/routes/userRoutes"));
 app.use("/api/departments", require("./src/routes/depRoutes"));
@@ -137,9 +127,8 @@ app.use("/api/security-settings", require("./src/routes/securitySettingRoutes"))
 app.use("/api/academic-years", require("./src/routes/academicYearRoutes"));
 
 /* =====================================================
-   🔟 ROOT ROUTE
+   9️⃣ ROOT ROUTE
 ===================================================== */
-
 app.get("/", (req, res) => {
   res.json({
     message: "Woldia University API",
@@ -149,9 +138,8 @@ app.get("/", (req, res) => {
 });
 
 /* =====================================================
-   1️⃣1️⃣ 404 HANDLER
+   🔟 404 HANDLER
 ===================================================== */
-
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -161,9 +149,8 @@ app.use((req, res) => {
 });
 
 /* =====================================================
-   1️⃣2️⃣ ERROR HANDLER
+   1️⃣1️⃣ ERROR HANDLER
 ===================================================== */
-
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err);
 
@@ -181,11 +168,9 @@ app.use((err, req, res, next) => {
 });
 
 /* =====================================================
-   🚀 START SERVER
+   1️⃣2️⃣ START SERVER
 ===================================================== */
-
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
