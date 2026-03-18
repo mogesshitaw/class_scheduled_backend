@@ -12,7 +12,7 @@ const uploadsDir = path.join(__dirname, 'uploads', 'students');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middlewares
 app.use(cors({
-  origin: ["http://localhost:3000", "https://classschedule-mtu.vercel.app"], // Next.js frontend
+  origin: ["http://localhost:3000", "https://class-schedule-frontend.vercel.app"], // Next.js frontend
   credentials: true,
 }));
 app.use(bodyParser.json());
