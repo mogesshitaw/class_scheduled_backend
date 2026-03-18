@@ -85,7 +85,7 @@ app.use("/api/auth", require("./src/routes/authRoutes"));
 app.use("/api/users", require("./src/routes/userRoutes"));
 app.use("/api/departments", require("./src/routes/depRoutes"));
 app.use("/api/courses", require("./src/routes/courseRoutes"));
-app.use("/api/schedules", require("./src/routes/scheduleRoutes")); // Fixed typo
+app.use("/api/schedules", require("./src/routes/sheduleRoutes")); // Fixed typo
 app.use("/api/feedback", require("./src/routes/feedbackRoutes"));
 app.use("/api/announcements", require("./src/routes/announceRoutes"));
 app.use("/api/blocks", require("./src/routes/blockRoute"));
