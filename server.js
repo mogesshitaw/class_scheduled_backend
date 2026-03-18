@@ -12,20 +12,25 @@ const uploadsDir = path.join(__dirname, 'uploads', 'students');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middlewares
 app.use(cors({
-  origin: ["http://localhost:3000", "https://class-schedule-frontend.vercel.app"], // Next.js frontend
+  origin:"https://class-schedule-frontend.vercel.app", // Next.js frontend
   credentials: true,
 }));
 app.use(bodyParser.json());
 app.use(express.json());
 
 // Session setup
+/* =====================================================
+   5️⃣ SESSION STORE (MEMORY ONLY FOR LOCAL)
+===================================================== */
 app.use(session({
-  secret: process.env.SESSION_SECRET || "mysecretkey",
+  secret: process.env.SESSION_SECRET || "keyboard cat",
   resave: false,
   saveUninitialized: false,
   cookie: {
-     maxAge: 10 * 60 * 1000 // 10 minutes inactivity
-    }, // set true only on HTTPS
+    secure: false,               // HTTP ላይ ስለሚሰራ  false ነው
+    sameSite: "lax",             // frontend/backend different domains ስለማይኖረው
+    maxAge: 24 * 60 * 60 * 1000, // 1 ቀን
+  },
 }));
 app.use(express.json()); // ✅ parse JSON
 app.use(express.urlencoded({ extended: true })); 
