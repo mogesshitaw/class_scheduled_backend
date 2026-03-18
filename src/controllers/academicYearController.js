@@ -68,7 +68,7 @@ const createAcademicYear = async (req, res) => {
 
     // Validation
     if (!semester_id || !batch_id || !academic_year || !start_date || !end_date) {
-      return res.status(400).json({ 
+      return res.status(400).json({  
         success: false, 
         error: "All fields are required" 
       });
@@ -367,19 +367,19 @@ const deleteAcademicYear = async (req, res) => {
       });
     }
 
-    // Check if academic year has associated schedules
-    const hasSchedules = await client.query(
-      `SELECT EXISTS(SELECT 1 FROM schedules WHERE academic_year_id = $1)`,
-      [id]
-    );
+    // // Check if academic year has associated schedules
+    // const hasSchedules = await client.query(
+    //   `SELECT EXISTS(SELECT 1 FROM schedules WHERE id = $1)`,
+    //   [id]
+    // );
 
-    if (hasSchedules.rows[0].exists) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ 
-        success: false, 
-        error: "Cannot delete academic year that has associated schedules" 
-      });
-    }
+    // if (hasSchedules.rows[0].exists) {
+    //   await client.query('ROLLBACK');
+    //   return res.status(400).json({ 
+    //     success: false, 
+    //     error: "Cannot delete academic year that has associated schedules" 
+    //   });
+    // }
 
     // Delete academic year
     await client.query(
@@ -404,7 +404,6 @@ const deleteAcademicYear = async (req, res) => {
     client.release();
   }
 };
-
 // Update academic year status
 const updateAcademicYearStatus = async (req, res) => {
   const client = await pool.connect();
@@ -472,20 +471,20 @@ const updateAcademicYearStatus = async (req, res) => {
 
     if (status === 'upcoming' && startDate <= currentDate) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ 
+      return res.status(400).json({  
         success: false, 
         error: "Cannot set as upcoming when start date has passed" 
       });
     }
 
-    // Update status
+    // Update status - ተስተካክሏል!
     const result = await client.query(
       `UPDATE academic_year 
        SET status = $1, updated_at = NOW()
        WHERE id = $2
        RETURNING *,
-         (SELECT semester FROM semesters WHERE id = semester_id) as semester_name,
-         (SELECT batch_year FROM batches WHERE batch_id = batch_id) as batch_year`,
+         (SELECT semester FROM semesters WHERE id = academic_year.semester_id) as semester_name,
+         (SELECT batch_year FROM batches WHERE batch_id = academic_year.batch_id) as batch_year`,
       [status, id]
     );
 
@@ -507,7 +506,6 @@ const updateAcademicYearStatus = async (req, res) => {
     client.release();
   }
 };
-
 // Get academic year by ID
 const getAcademicYearById = async (req, res) => {
   try {
