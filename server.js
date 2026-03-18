@@ -9,12 +9,10 @@ const pool = require("./src/db"); // your Pool using DATABASE_URL
 
 const app = express();
 
-
 /* =====================================================
-   2️⃣ CORS CONFIGURATION
+   1️⃣ CORS CONFIGURATION
 ===================================================== */
-const allowedOrigins = [ "https://classschedule-mtu.vercel.app", // your real frontend
-];
+const allowedOrigins = ["https://classschedule-mtu.vercel.app"];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -29,14 +27,15 @@ app.use(cors({
   },
   credentials: true,
 }));
+
 /* =====================================================
-   3️⃣ BODY PARSER
+   2️⃣ BODY PARSER
 ===================================================== */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* =====================================================
-   4️⃣ SESSION STORE (PostgreSQL)
+   3️⃣ SESSION STORE (PostgreSQL)
 ===================================================== */
 app.set("trust proxy", 1); // required if behind proxy (Render/Vercel)
 
@@ -57,12 +56,12 @@ app.use(session({
 }));
 
 /* =====================================================
-   5️⃣ STATIC FILES
+   4️⃣ STATIC FILES
 ===================================================== */
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* =====================================================
-   6️⃣ REQUEST LOGGER
+   5️⃣ REQUEST LOGGER
 ===================================================== */
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.originalUrl}`);
@@ -70,7 +69,7 @@ app.use((req, res, next) => {
 });
 
 /* =====================================================
-   7️⃣ HEALTH CHECK
+   6️⃣ HEALTH CHECK
 ===================================================== */
 app.get("/api/health", (req, res) => {
   res.json({
@@ -80,13 +79,13 @@ app.get("/api/health", (req, res) => {
 });
 
 /* =====================================================
-   8️⃣ ROUTES
+   7️⃣ ROUTES
 ===================================================== */
 app.use("/api/auth", require("./src/routes/authRoutes"));
 app.use("/api/users", require("./src/routes/userRoutes"));
 app.use("/api/departments", require("./src/routes/depRoutes"));
 app.use("/api/courses", require("./src/routes/courseRoutes"));
-app.use("/api/schedules", require("./src/routes/sheduleRoutes"));
+app.use("/api/schedules", require("./src/routes/scheduleRoutes")); // Fixed typo
 app.use("/api/feedback", require("./src/routes/feedbackRoutes"));
 app.use("/api/announcements", require("./src/routes/announceRoutes"));
 app.use("/api/blocks", require("./src/routes/blockRoute"));
@@ -106,7 +105,7 @@ app.use("/api/security-settings", require("./src/routes/securitySettingRoutes"))
 app.use("/api/academic-years", require("./src/routes/academicYearRoutes"));
 
 /* =====================================================
-   9️⃣ ROOT ROUTE
+   8️⃣ ROOT ROUTE
 ===================================================== */
 app.get("/", (req, res) => {
   res.json({
@@ -117,7 +116,7 @@ app.get("/", (req, res) => {
 });
 
 /* =====================================================
-   🔟 404 HANDLER
+   9️⃣ 404 HANDLER
 ===================================================== */
 app.use((req, res) => {
   res.status(404).json({
@@ -128,7 +127,7 @@ app.use((req, res) => {
 });
 
 /* =====================================================
-   1️⃣1️⃣ ERROR HANDLER
+   1️⃣0️⃣ ERROR HANDLER
 ===================================================== */
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err);
@@ -137,17 +136,18 @@ app.use((err, req, res, next) => {
     return next(err);
   }
 
-  res.status(500).json({
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
     success: false,
-    message:
-      process.env.NODE_ENV === "development"
-        ? err.message
-        : "Internal server error",
+    message: process.env.NODE_ENV === "development" 
+      ? err.message 
+      : "Internal server error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack })
   });
 });
 
 /* =====================================================
-   1️⃣2️⃣ START SERVER
+   1️⃣1️⃣ START SERVER
 ===================================================== */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
